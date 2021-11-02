@@ -42,7 +42,7 @@ $tmpDir = [System.IO.Path]::Combine($PWD, '_TMP')
 Write-ActionInfo "Resolved tmpDir as [$tmpDir]"
 $test_results_path = $inputs.test_results_path
 $test_report_path = Join-Path $tmpDir test-results.md
-
+$start_time = [datetime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
 New-Item -Name $tmpDir -ItemType Directory -Force -ErrorAction Ignore
 
 function Build-MarkdownReport {
@@ -133,7 +133,7 @@ function Publish-ToCheckRun {
 
     $url = "https://api.github.com/repos/$repoFullName/check-runs"
     $hdr = @{
-        Accept = 'application/vnd.github.antiope-preview+json'
+        Accept = 'application/vnd.github.v3+json'
         Authorization = "token $ghToken"
     }
     $bdy = @{
@@ -141,12 +141,15 @@ function Publish-ToCheckRun {
         head_sha   = $ref
         status     = 'completed'
         conclusion = $conclusion
+        started_at = $start_time
+        completed_at = [datetime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
         output     = @{
             title   = $report_title
-            summary = "This run completed at ``$([datetime]::Now)``"
+            summary = "dotnet test run - $conclusion"
             text    = $reportData
         }
     }
+    Write-ActionInfo "Sending check create request to $url with $bdy"
     Invoke-WebRequest -Headers $hdr $url -Method Post -Body ($bdy | ConvertTo-Json)
 }
 
